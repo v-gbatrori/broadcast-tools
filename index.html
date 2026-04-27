@@ -1,0 +1,462 @@
+<!doctype html><html lang="hu"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Broadcast Tools</title><style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:#0a0a0f;color:#e8eaf0;font-family:'IBM Plex Mono',ui-monospace,monospace;overflow:hidden}
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600;700&display=swap');
+
+/* TABS */
+#tabbar{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;gap:0;background:#0d0d14;border-bottom:1px solid #1e2030;height:44px;padding:0 12px}
+.tab{padding:0 20px;height:44px;display:flex;align-items:center;font:600 12px 'IBM Plex Mono',monospace;color:#4a5070;cursor:pointer;border-bottom:2px solid transparent;letter-spacing:.08em;text-transform:uppercase;transition:color .15s,border-color .15s}
+.tab.active{color:#c8f0ff;border-bottom-color:#38bdf8}
+.tab:hover:not(.active){color:#8090b0}
+#brand{margin-left:auto;font:700 11px monospace;color:#2a3050;letter-spacing:.12em}
+
+/* VIEWS */
+.view{position:fixed;top:44px;inset:44px 0 0;display:none}
+.view.active{display:block}
+
+/* ── GENERATOR ── */
+#gen-canvas{width:100%;height:100%;display:block;background:#000}
+#gen-ui{position:absolute;top:10px;left:10px;right:10px;z-index:5;display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:rgba(10,10,20,.88);border:1px solid #1e2535;border-radius:12px;padding:8px 10px;backdrop-filter:blur(8px)}
+#gen-ui select,#gen-ui input,#gen-ui button{font:600 11px 'IBM Plex Mono',monospace;background:#080d18;color:#c8d8f0;border:1px solid #1e2a3a;border-radius:8px;padding:6px 9px;letter-spacing:.04em}
+#gen-ui button{cursor:pointer;transition:background .12s}
+#gen-ui button:hover{background:#151d2e}
+#gen-ui .gob{background:linear-gradient(135deg,#0ea87a,#38bdf8);color:#041018;border:0}
+#gen-ui .pill{font:600 11px monospace;background:#08121e;border:1px solid #1a2535;border-radius:999px;padding:5px 10px;color:#38bdf8}
+#gen-hint{position:absolute;bottom:10px;left:10px;font:11px monospace;color:#2a3850;letter-spacing:.06em}
+
+/* ── LATENCY METER ── */
+#lat-canvas,#lat-video{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover}
+#lat-video{display:none}
+#lat-ui{position:absolute;top:10px;left:10px;right:10px;z-index:5;display:flex;gap:6px;align-items:center;flex-wrap:wrap;background:rgba(10,10,20,.88);border:1px solid #1e2535;border-radius:12px;padding:8px 10px;backdrop-filter:blur(8px)}
+#lat-ui select,#lat-ui input,#lat-ui button{font:600 11px 'IBM Plex Mono',monospace;background:#080d18;color:#c8d8f0;border:1px solid #1e2a3a;border-radius:8px;padding:6px 9px}
+#lat-ui button{cursor:pointer;transition:background .12s}
+#lat-ui button:hover{background:#151d2e}
+#lat-ui .gob{background:linear-gradient(135deg,#0ea87a,#38bdf8);color:#041018;border:0}
+#lat-ui .pill{font:600 11px monospace;background:#08121e;border:1px solid #1a2535;border-radius:999px;padding:5px 10px;color:#38bdf8}
+#lat-guide{position:absolute;left:7%;right:7%;top:30%;height:38%;border:2px solid rgba(56,189,248,.7);border-radius:14px;pointer-events:none;display:none}
+#lat-scan{position:absolute;inset:0;display:none}
+#lat-panel{position:absolute;bottom:10px;left:10px;right:10px;display:none;grid-template-columns:repeat(4,1fr);gap:8px}
+.m{background:rgba(10,10,20,.88);border:1px solid #1e2535;border-radius:12px;padding:10px 12px}
+.m span{display:block;font:11px monospace;color:#3a4860;letter-spacing:.06em;margin-bottom:4px}
+.m b{font:700 16px monospace}
+.ok{color:#22c55e}.warn{color:#f59e0b}.bad{color:#ef4444}
+
+@media(max-width:900px){
+  #lat-panel{grid-template-columns:repeat(2,1fr)}
+  #gen-ui,#lat-ui{gap:4px}
+}
+</style></head><body>
+
+<div id="tabbar">
+  <div class="tab active" id="tab-gen" onclick="switchTab('gen')">Signal Generator</div>
+  <div class="tab" id="tab-lat" onclick="switchTab('lat')">Latency Meter</div>
+  <div id="brand">BROADCAST TOOLS</div>
+</div>
+
+<!-- GENERATOR VIEW -->
+<div class="view active" id="view-gen">
+  <canvas id="gen-canvas"></canvas>
+  <div id="gen-ui">
+    <span style="font:700 11px monospace;color:#3a5070;letter-spacing:.1em">GENERATOR</span>
+    <select id="g-pat">
+      <option value="smpte">SMPTE bars</option>
+      <option value="bars">Color bars + marker</option>
+      <option value="center">Timecode fullscreen</option>
+      <option value="gradient">Gradient / banding</option>
+      <option value="pixel">Pixel checker</option>
+      <option value="motion">Motion / latency box</option>
+      <option value="flash">Frame flash</option>
+      <option value="pluge">PLUGE / black level</option>
+      <option value="grid">Grid / sharpness</option>
+      <option value="multi">Multiview sim</option>
+      <option value="loss">Signal loss test</option>
+      <option value="noise">Noisy signal</option>
+    </select>
+    <select id="g-fmt">
+      <option value="1920x1080p50">1920×1080 p50</option>
+      <option value="1920x1080p59.94">1920×1080 p59.94</option>
+      <option value="1920x1080i50">1920×1080 i50</option>
+      <option value="1280x720p50">1280×720 p50</option>
+      <option value="3840x2160p25">3840×2160 p25</option>
+      <option value="3840x2160p50">3840×2160 p50</option>
+    </select>
+    <input id="g-overlay" placeholder="Overlay szöveg" style="width:130px">
+    <button class="gob" onclick="document.documentElement.requestFullscreen?.()">Fullscreen</button>
+    <button id="g-pause">Pause</button>
+    <button id="g-reset">Reset TC</button>
+    <button id="g-clean">Clean: KI</button>
+    <span class="pill" id="g-clock">TC 00:00:00:00</span>
+  </div>
+  <div id="gen-hint">F fullscreen · H UI elrejtés · Space pause · R reset · C clean</div>
+</div>
+
+<!-- LATENCY METER VIEW -->
+<div class="view" id="view-lat">
+  <canvas id="lat-canvas"></canvas>
+  <video id="lat-video" playsinline muted></video>
+  <canvas id="lat-scan"></canvas>
+  <div id="lat-guide"></div>
+  <div id="lat-ui">
+    <span style="font:700 11px monospace;color:#3a5070;letter-spacing:.1em">LATENCY</span>
+    <select id="l-mode" onchange="setLatMode()">
+      <option value="gen">Generator / Master Marker</option>
+      <option value="phone">Kamera Analizátor</option>
+    </select>
+    <select id="l-syncmode" title="Clock sync mode">
+      <option value="baseline">Baseline only</option>
+      <option value="internet">Internet sync</option>
+      <option value="custom">Custom time URL</option>
+    </select>
+    <input id="l-timeurl" placeholder="Optional time URL" style="width:160px">
+    <button onclick="syncClock()">Sync clock</button>
+    <button id="l-qrbtn" onclick="showQR()">QR telefon</button>
+    <button class="gob" id="l-start" onclick="startCamera()" style="display:none">Kamera indítás</button>
+    <button id="l-cal" onclick="calibrate()" style="display:none">Baseline kalibrálás</button>
+    <button id="l-reset" onclick="resetMeasure()" style="display:none">Reset</button>
+    <button onclick="document.documentElement.requestFullscreen?.()">Fullscreen</button>
+    <span class="pill" id="l-tc">GM 00:00:00.000</span>
+    <span class="pill" id="l-sync" style="color:#f59e0b">BASELINE</span>
+    <span class="pill" id="l-hosted" style="color:#4a6080">HOSTED HTTPS</span>
+  </div>
+  <div id="qr-modal" style="display:none;position:absolute;inset:0;z-index:50;background:rgba(0,0,0,.85);align-items:center;justify-content:center;flex-direction:column">
+    <div style="background:#0d0d18;border:1px solid #1e2535;border-radius:16px;padding:28px;text-align:center;max-width:380px">
+      <div style="font:700 13px monospace;color:#38bdf8;letter-spacing:.1em;margin-bottom:14px">TELEFON ANALYZER QR</div>
+      <div id="qr-img" style="background:#fff;border-radius:8px;padding:8px;display:inline-block;margin-bottom:12px;min-width:220px;min-height:220px"></div>
+      <div id="qr-url" style="font:11px monospace;color:#7aa7c8;word-break:break-all;margin-bottom:10px"></div>
+      <div style="font:11px monospace;color:#5b708f;line-height:1.55;margin-bottom:16px;text-align:left">
+        1. Nyisd meg ezt a hosted HTTPS oldalt laptopon<br>
+        2. Latency Meter → Generator / Master Marker<br>
+        3. Telefon beolvassa ezt a QR-t<br>
+        4. Telefon automatikusan Kamera Analizátor módba vált<br>
+        5. Baseline kalibrálás laptop kijelzőn, majd mérés a végponton
+      </div>
+      <button onclick="copyQRUrl()" style="font:700 11px monospace;background:#10251f;color:#c8f0dc;border:1px solid #1f5d46;border-radius:8px;padding:8px 14px;cursor:pointer;margin-right:8px">URL másolás</button>
+      <button onclick="hideQR()" style="font:700 11px monospace;background:#1a2535;color:#c8d8f0;border:1px solid #2a3545;border-radius:8px;padding:8px 20px;cursor:pointer">Bezárás</button>
+    </div>
+  </div>
+  <div id="lat-panel">
+    <div class="m"><span>STÁTUSZ</span><b id="l-status" class="warn">KÉSZ</b></div>
+    <div class="m"><span>MEGBÍZHATÓSÁG</span><b id="l-conf" class="warn">--</b></div>
+    <div class="m"><span>NYERS MÉRT</span><b id="l-raw">-- ms</b></div>
+    <div class="m"><span>BASELINE</span><b id="l-base">0 ms</b></div>
+    <div class="m"><span>BROADCAST KÉSÉS</span><b id="l-lat">-- ms</b></div>
+    <div class="m"><span>ÁTLAG</span><b id="l-avg">-- ms</b></div>
+    <div class="m"><span>MIN / MAX</span><b id="l-minmax">-- / --</b></div>
+    <div class="m"><span>CLOCK SYNC</span><b id="l-syncstat" class="warn">OFF</b></div>
+  </div>
+</div>
+
+<script>
+// ── TAB SWITCH ──
+function switchTab(t){
+  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.view').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  document.getElementById('view-'+t).classList.add('active');
+}
+
+// ══════════════════════════════════════════
+// SIGNAL GENERATOR
+// ══════════════════════════════════════════
+const gc=document.getElementById('gen-canvas'),gx=gc.getContext('2d');
+let gRunning=true,gClean=false,gAcc=0,gStart=performance.now(),gLastW=0,gLastH=0;
+
+function gPf(s){let a=s.split('x'),r=a[1]||'1080p50',i=r.indexOf('p'),scan='p';if(i<0){i=r.indexOf('i');scan='i'}return{w:+a[0]||1920,h:+r.slice(0,i)||1080,scan,fps:+r.slice(i+1)||50,label:s.replace('x','×')}}
+function gRt(){return gRunning?(gAcc+performance.now()-gStart)/1000:gAcc/1000}
+function gResize(){let d=Math.min(devicePixelRatio||1,2),w=Math.floor(innerWidth*d),h=Math.floor((innerHeight-44)*d);if(w!==gLastW||h!==gLastH){gc.width=gLastW=w;gc.height=gLastH=h}}
+function gTc(t){let f=gPf(document.getElementById('g-fmt').value),fps=Math.round(f.fps),n=Math.floor(t*fps),s=Math.floor(n/fps);return String(Math.floor(s/3600)).padStart(2,'0')+':'+String(Math.floor(s/60)%60).padStart(2,'0')+':'+String(s%60).padStart(2,'0')+':'+String(n%fps).padStart(2,'0')}
+function gLabel(s){if(gClean)return;gx.fillStyle='rgba(0,0,0,.6)';gx.fillRect(gc.width*.04,gc.height*.05,Math.min(gc.width*.7,700),56);gx.fillStyle='#c8e8ff';gx.font='700 '+Math.max(18,gc.width/55)+'px monospace';gx.fillText(s,gc.width*.055,gc.height*.11)}
+function gOsd(t){document.getElementById('g-clock').textContent='TC '+gTc(t);document.getElementById('g-pause').textContent=gRunning?'Pause':'Play';document.getElementById('g-clean').textContent='Clean: '+(gClean?'BE':'KI');if(gClean)return;gx.fillStyle='rgba(0,0,0,.65)';gx.fillRect(14,gc.height-64,Math.min(780,gc.width-28),50);gx.fillStyle='#c8e8ff';gx.font=Math.max(14,gc.width/90)+'px monospace';gx.fillText(gPf(document.getElementById('g-fmt').value).label+'  TC '+gTc(t),28,gc.height-30);let ov=document.getElementById('g-overlay').value;if(ov){gx.textAlign='right';gx.font='700 '+Math.max(16,gc.width/70)+'px monospace';gx.fillText(ov,gc.width-28,42);gx.textAlign='start'}}
+function gSafe(){if(gClean)return;gx.strokeStyle='rgba(255,255,255,.2)';gx.strokeRect(gc.width*.04,gc.height*.04,gc.width*.92,gc.height*.92);gx.strokeStyle='rgba(255,255,255,.1)';gx.strokeRect(gc.width*.09,gc.height*.09,gc.width*.82,gc.height*.82)}
+
+function pSmpte(){let top=['#c0c0c0','#c0c000','#00c0c0','#00c000','#c000c0','#c00000','#0000c0'],bw=gc.width/top.length;top.forEach((v,i)=>{gx.fillStyle=v;gx.fillRect(i*bw,0,bw,gc.height*.68)});gx.fillStyle='#020617';gx.fillRect(0,gc.height*.84,gc.width,gc.height*.16);gLabel('SMPTE COLOR BARS')}
+function pBars(t){let cs=['#fff','#fde047','#22c55e','#06b6d4','#3b82f6','#a855f7','#ef4444'],bw=gc.width/cs.length;cs.forEach((v,i)=>{gx.fillStyle=v;gx.fillRect(i*bw,0,bw,gc.height*.72)});gx.fillStyle='#020617';gx.fillRect(0,gc.height*.72,gc.width,gc.height*.28);gx.fillStyle='#fff';gx.fillRect((Math.sin(t*1.8)*.5+.5)*(gc.width-12),0,12,gc.height);gLabel('COLOR BARS + MOVING MARKER')}
+function pCenter(t){gx.fillStyle='#020617';gx.fillRect(0,0,gc.width,gc.height);gx.strokeStyle='rgba(56,189,248,.3)';gx.lineWidth=3;gx.strokeRect(gc.width*.06,gc.height*.1,gc.width*.88,gc.height*.8);gx.fillStyle='#e0f2fe';gx.textAlign='center';gx.textBaseline='middle';gx.font='900 '+Math.max(64,gc.width/9)+'px monospace';gx.fillText(gTc(t),gc.width/2,gc.height/2);gx.textAlign='start';gx.textBaseline='alphabetic'}
+function pGradient(t){let g=gx.createLinearGradient(0,0,gc.width,0),s=(Math.sin(t*.35)*.5+.5);[['#000',0],['#1e293b',.12],['#ef4444',.25],['#f59e0b',.45+s*.08],['#22c55e',.6],['#38bdf8',.78],['#a855f7',.92],['#fff',1]].forEach(a=>g.addColorStop(a[1],a[0]));gx.fillStyle=g;gx.fillRect(0,0,gc.width,gc.height);let bw=Math.max(40,gc.width/18),mv=(t*90)%(bw*2);for(let i=-2;i<gc.width/bw+2;i++){gx.fillStyle=i%2?'rgba(255,255,255,.045)':'rgba(0,0,0,.03)';gx.fillRect(i*bw+mv,0,bw,gc.height)}gLabel('GRADIENT / BANDING CHECK')}
+function pPixel(){gx.fillStyle='#05070b';gx.fillRect(0,0,gc.width,gc.height);let blocks=[16,24,32,48,64,96],y=gc.height*.22,gap=gc.width*.02,cx=gc.width*.05;blocks.forEach(sz=>{let bw=Math.max(sz*2.2,gc.width*.08),px=Math.max(8,Math.floor(sz/2));for(let yy=0;yy<gc.height*.18;yy+=px)for(let xx=0;xx<bw;xx+=px){gx.fillStyle=((xx/px+yy/px)%2|0)?'#f8fafc':'#111827';gx.fillRect(cx+xx,y+yy,px,px)}gx.fillStyle='#fff';gx.font='700 '+Math.max(18,gc.width/70)+'px monospace';gx.fillText(sz+' px',cx,y+gc.height*.18+32);cx+=bw+gap});gLabel('PIXEL CHECKER')}
+function pGrid(){let g=gx.createLinearGradient(0,0,gc.width,gc.height);g.addColorStop(0,'#172554');g.addColorStop(1,'#064e3b');gx.fillStyle=g;gx.fillRect(0,0,gc.width,gc.height);gx.strokeStyle='rgba(255,255,255,.25)';let s=Math.max(32,gc.width/24);for(let a=0;a<gc.width;a+=s){gx.beginPath();gx.moveTo(a,0);gx.lineTo(a,gc.height);gx.stroke()}for(let a=0;a<gc.height;a+=s){gx.beginPath();gx.moveTo(0,a);gx.lineTo(gc.width,a);gx.stroke()}gLabel('GRID / SHARPNESS TEST')}
+function pMotion(t){gx.fillStyle='#030712';gx.fillRect(0,0,gc.width,gc.height);pGrid();let bx=(Math.sin(t*2)*.5+.5)*(gc.width*.72)+gc.width*.08,by=(Math.cos(t*1.4)*.5+.5)*(gc.height*.58)+gc.height*.12;gx.fillStyle='#22c55e';gx.fillRect(bx,by,gc.width*.13,gc.height*.13);gLabel('MOTION / LATENCY TEST')}
+function pFlash(t){let on=Math.floor(t*2)%2===0;gx.fillStyle=on?'#fff':'#000';gx.fillRect(0,0,gc.width,gc.height);gx.fillStyle=on?'#000':'#fff';gx.textAlign='center';gx.textBaseline='middle';gx.font='900 '+Math.max(56,gc.width/11)+'px monospace';gx.fillText('FRAME '+Math.floor(t*gPf(document.getElementById('g-fmt').value).fps),gc.width/2,gc.height/2);gx.textAlign='start';gx.textBaseline='alphabetic'}
+function pPluge(){gx.fillStyle='#000';gx.fillRect(0,0,gc.width,gc.height);[5,12,20,35,55,80].forEach((v,i)=>{gx.fillStyle='rgb('+v+','+v+','+v+')';gx.fillRect(gc.width*(.1+i*.12),gc.height*.22,gc.width*.09,gc.height*.55)});gLabel('PLUGE / BLACK LEVEL')}
+function pMulti(t){let labs=['CAM 1','CAM 2','PREVIEW','PROGRAM'],cols=['#1e3a8a','#14532d','#7c2d12','#7f1d1d'];for(let i=0;i<4;i++){let px=i%2*gc.width/2,py=Math.floor(i/2)*gc.height/2;gx.fillStyle=cols[i];gx.fillRect(px,py,gc.width/2,gc.height/2);gx.strokeStyle=i===3?'#ef4444':'#22c55e';gx.lineWidth=5;gx.strokeRect(px+10,py+10,gc.width/2-20,gc.height/2-20);gx.fillStyle='#fff';gx.font='700 '+Math.max(26,gc.width/30)+'px monospace';gx.fillText(labs[i],px+26,py+50)}}
+function pLoss(t){let lost=Math.floor(t/3)%3===1;if(lost){gx.fillStyle='#000';gx.fillRect(0,0,gc.width,gc.height);gx.fillStyle='#ef4444';gx.textAlign='center';gx.textBaseline='middle';gx.font='900 '+Math.max(42,gc.width/12)+'px monospace';gx.fillText('NO SIGNAL',gc.width/2,gc.height/2);gx.textAlign='start';gx.textBaseline='alphabetic'}else pBars(t)}
+function pNoise(){let im=gx.createImageData(gc.width,gc.height);for(let i=0;i<im.data.length;i+=4){let v=Math.random()*255;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=255}gx.putImageData(im,0,0);gLabel('NOISY SIGNAL')}
+
+const gPatterns={smpte:pSmpte,bars:pBars,center:pCenter,gradient:pGradient,pixel:pPixel,motion:pMotion,flash:pFlash,pluge:pPluge,grid:pGrid,multi:pMulti,loss:pLoss,noise:pNoise};
+
+function gDraw(){
+  if(!document.getElementById('view-gen').classList.contains('active')){requestAnimationFrame(gDraw);return}
+  gResize();let t=gRt();gx.clearRect(0,0,gc.width,gc.height);
+  (gPatterns[document.getElementById('g-pat').value]||pSmpte)(t);
+  if(document.getElementById('g-pat').value!=='center')gSafe();
+  if(document.getElementById('g-pat').value!=='center')gOsd(t);
+  requestAnimationFrame(gDraw)
+}
+
+document.getElementById('g-pause').onclick=()=>{if(gRunning){gAcc+=performance.now()-gStart;gRunning=false}else{gStart=performance.now();gRunning=true}};
+document.getElementById('g-reset').onclick=()=>{gAcc=0;gStart=performance.now()};
+document.getElementById('g-clean').onclick=()=>{gClean=!gClean;document.getElementById('gen-ui').style.display=gClean?'none':'flex';document.getElementById('gen-hint').style.display=gClean?'none':'block'};
+
+// ══════════════════════════════════════════
+// LATENCY METER
+// ══════════════════════════════════════════
+const lc=document.getElementById('lat-canvas'),lx=lc.getContext('2d');
+const lv=document.getElementById('lat-video'),ls=document.getElementById('lat-scan'),lsctx=ls.getContext('2d');
+const lGuide=document.getElementById('lat-guide'),lPanel=document.getElementById('lat-panel');
+let lBaseline=+localStorage.getItem('lBaseline')||0,lOffset=+localStorage.getItem('lOffset')||0,lSyncOK=false,lSyncJitter=999;
+let lSamples=[],lRawSamples=[],lLastRead=null,lCam=false,lLastW=0,lLastH=0;
+
+function lResize(){let w=Math.floor(innerWidth),h=Math.floor(innerHeight-44);if(w!==lLastW||h!==lLastH){lc.width=ls.width=lLastW=w;lc.height=ls.height=lLastH=h}}
+function lNow(){return Date.now()+lOffset}
+function lBits(v){let a=[];for(let i=15;i>=0;i--)a.push((v>>i)&1);return a}
+function lModDiff(a,b){return(a-b+65536)%65536}
+function lClockText(ms){let d=new Date(ms),m=String(d.getMilliseconds()).padStart(3,'0');return d.toTimeString().slice(0,8)+'.'+m}
+function lClamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function lEl(id){return document.getElementById(id)}
+
+function drawGmMarker(){
+  let w=lc.width,h=lc.height,now=lNow(),v=now%65536,bs=lBits(v);
+  lEl('l-tc').textContent='GM '+lClockText(now);
+  lx.fillStyle='#020617';lx.fillRect(0,0,w,h);
+  lx.fillStyle='#c8e8ff';lx.textAlign='center';
+  lx.font='900 '+Math.max(28,w/30)+'px monospace';
+  lx.fillText('GRANDMASTER LATENCY MARKER',w/2,h*.12);
+  lx.font='700 '+Math.max(14,w/60)+'px monospace';
+  lx.fillText('GM mod 65536ms: '+Math.floor(v),w/2,h*.2);
+  let y=h*.3,bh=h*.36,cw=w/16;
+  for(let i=0;i<16;i++){lx.fillStyle=bs[i]?'#fff':'#000';lx.fillRect(i*cw,y,cw+1,bh);lx.strokeStyle='#38bdf8';lx.lineWidth=Math.max(1,w/1600);lx.strokeRect(i*cw,y,cw,bh)}
+  lx.strokeStyle=lSyncOK?'#22c55e':'#f59e0b';lx.lineWidth=Math.max(6,w/300);lx.strokeRect(0,y,w,bh);
+  lx.fillStyle='#dbeafe';lx.font='900 '+Math.max(32,w/34)+'px monospace';
+  lx.fillText(lClockText(lNow()),w/2,h*.78);
+  lx.textAlign='start'
+}
+
+function readMarker(){
+  if(!lCam||lv.videoWidth<10)return null;
+  let w=ls.width,h=ls.height;lsctx.drawImage(lv,0,0,w,h);
+  let y=Math.floor(h*.5),vals=[],margins=[];
+  for(let i=0;i<16;i++){let px=Math.floor((i+.5)*w/16),sum=0,n=0;for(let yy=-12;yy<=12;yy+=6)for(let xx=-12;xx<=12;xx+=6){let p=lsctx.getImageData(lClamp(px+xx,0,w-1),lClamp(y+yy,0,h-1),1,1).data;sum+=(p[0]+p[1]+p[2])/3;n++}let lum=sum/n;vals.push(lum>125?1:0);margins.push(Math.abs(lum-125))}
+  let v=0;vals.forEach(b=>v=(v<<1)|b);
+  let avg=margins.reduce((a,b)=>a+b,0)/margins.length,mn=Math.min(...margins),conf=lClamp((avg-18)/85,0,1)*.75+lClamp((mn-6)/45,0,1)*.25;
+  return{v,conf}
+}
+
+function jScore(){if(lRawSamples.length<8)return.55;let avg=lRawSamples.reduce((a,b)=>a+b,0)/lRawSamples.length,sd=Math.sqrt(lRawSamples.reduce((a,b)=>a+(b-avg)**2,0)/lRawSamples.length);return lClamp(1-sd/65,0,1)}
+function confLabel(s){return s>=.78?['HIGH','ok']:s>=.48?['MED','warn']:['LOW','bad']}
+
+function analyzeMarker(){
+  let r=readMarker();if(!r)return;
+  let raw=lModDiff(lNow()%65536,r.v);
+  if(raw>8000){lEl('l-status').textContent='HIBA';lEl('l-status').className='bad';lEl('l-conf').textContent='LOW';lEl('l-conf').className='bad';return}
+  lLastRead=raw;lRawSamples.push(raw);if(lRawSamples.length>60)lRawSamples.shift();
+  let lat=Math.max(0,raw-lBaseline);lSamples.push(lat);if(lSamples.length>180)lSamples.shift();
+  let avg=lSamples.reduce((a,b)=>a+b,0)/lSamples.length,mn=Math.min(...lSamples),mx=Math.max(...lSamples),score=lClamp(r.conf*.72+jScore()*.28,0,1),q=confLabel(score);
+  lEl('l-raw').textContent=Math.round(raw)+' ms';lEl('l-base').textContent=Math.round(lBaseline)+' ms';
+  lEl('l-lat').textContent=Math.round(lat)+' ms';lEl('l-avg').textContent=Math.round(avg)+' ms';
+  lEl('l-minmax').textContent=Math.round(mn)+' / '+Math.round(mx)+' ms';
+  lEl('l-conf').textContent=q[0]+' '+Math.round(score*100)+'%';lEl('l-conf').className=q[1];
+  lEl('l-status').textContent=q[0]==='LOW'?'INSTABIL':'KÉSZ';lEl('l-status').className=q[0]==='LOW'?'warn':'ok'
+}
+
+async function startCamera(){
+  try{let s=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});lv.srcObject=s;await lv.play();lCam=true;lEl('l-status').textContent='KAMERA';lEl('l-status').className='ok'}
+  catch(e){lEl('l-status').textContent='NO CAM';lEl('l-status').className='bad'}
+}
+
+let lastPhoneUrl='';
+function baseHostedUrl(){
+  const u=new URL(location.href);
+  u.search='';
+  u.hash='';
+  return u.toString();
+}
+function buildPhoneUrl(){
+  const u=new URL(baseHostedUrl());
+  u.searchParams.set('tab','lat');
+  u.searchParams.set('mode','phone');
+  u.searchParams.set('sync',lEl('l-syncmode')?.value||'baseline');
+  return u.toString();
+}
+async function showQR(){
+  const modal=lEl('qr-modal');
+  modal.style.display='flex';
+  const imgDiv=lEl('qr-img');
+  const urlDiv=lEl('qr-url');
+  lastPhoneUrl=buildPhoneUrl();
+  urlDiv.textContent=lastPhoneUrl;
+  imgDiv.innerHTML='<div style="width:220px;height:220px;display:flex;align-items:center;justify-content:center;color:#999;font:12px monospace">QR készül...</div>';
+
+  const img=document.createElement('img');
+  img.alt='Phone analyzer QR';
+  // Hosted/static mode: no local /qr endpoint needed.
+  img.src='https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=8&data='+encodeURIComponent(lastPhoneUrl);
+  img.style.cssText='width:220px;height:220px;display:block';
+  img.onload=()=>{imgDiv.innerHTML='';imgDiv.appendChild(img)};
+  img.onerror=()=>{imgDiv.innerHTML='<div style="color:#ef4444;font:12px monospace;padding:12px">QR szolgáltatás nem elérhető.<br>Másold az URL-t kézzel.</div>'};
+
+  // Laptop side can also sync if Internet mode is selected.
+  syncClock();
+}
+async function copyQRUrl(){
+  if(!lastPhoneUrl) lastPhoneUrl=buildPhoneUrl();
+  try{await navigator.clipboard.writeText(lastPhoneUrl)}catch(e){}
+}
+function hideQR(){lEl('qr-modal').style.display='none'}
+
+function setSyncLabel(text,color,stat,cls){
+  lEl('l-sync').textContent=text;
+  lEl('l-sync').style.color=color||'#f59e0b';
+  lEl('l-syncstat').textContent=stat||text;
+  lEl('l-syncstat').className=cls||'warn';
+}
+function parseTraceTime(txt){
+  const m=String(txt).match(/^ts=(\d+(?:\.\d+)?)/m);
+  return m?Number(m[1])*1000:null;
+}
+function parseAnyTime(txt){
+  try{
+    const j=JSON.parse(txt);
+    if(j.t) return Number(j.t);
+    if(j.now) return Number(j.now);
+    if(j.time) return Number(j.time);
+    if(j.unixtime) return Number(j.unixtime)*1000;
+    if(j.datetime) return Date.parse(j.datetime);
+  }catch(e){}
+  const tr=parseTraceTime(txt);
+  if(tr) return tr;
+  return null;
+}
+async function sampleTimeUrl(url, parser){
+  const t0=Date.now();
+  const res=await fetch(url+(url.includes('?')?'&':'?')+'_='+Math.random(),{cache:'no-store'});
+  const txt=await res.text();
+  const t3=Date.now();
+  let srv=parser?parser(txt,res):parseAnyTime(txt);
+  if(!srv){
+    const dh=res.headers.get('date');
+    if(dh) srv=Date.parse(dh);
+  }
+  if(!srv) throw Error('No readable time in response');
+  const rtt=t3-t0;
+  const off=srv+rtt/2-t3;
+  return{off,rtt};
+}
+async function internetTimeSync(){
+  // Works best when hosted on Cloudflare Pages or a Cloudflare-proxied domain.
+  const urls=[
+    '/cdn-cgi/trace',
+    'https://www.cloudflare.com/cdn-cgi/trace'
+  ];
+  const results=[];
+  for(const url of urls){
+    for(let i=0;i<8;i++){
+      try{
+        const r=await sampleTimeUrl(url,(txt)=>parseTraceTime(txt));
+        results.push(r);
+        await new Promise(res=>setTimeout(res,60));
+      }catch(e){}
+    }
+    if(results.length>=4) break;
+  }
+  return results;
+}
+async function customTimeSync(){
+  const url=(lEl('l-timeurl')?.value||'').trim();
+  if(!url) throw Error('Missing custom time URL');
+  const results=[];
+  for(let i=0;i<12;i++){
+    results.push(await sampleTimeUrl(url));
+    await new Promise(res=>setTimeout(res,60));
+  }
+  return results;
+}
+function applySyncResults(results){
+  results.sort((a,b)=>a.rtt-b.rtt);
+  const best=results.slice(0,Math.min(8,results.length));
+  const avg=best.reduce((a,b)=>a+b.off,0)/best.length;
+  const spread=Math.max(...best.map(x=>x.off))-Math.min(...best.map(x=>x.off));
+  lOffset=avg;
+  lSyncJitter=spread;
+  lSyncOK=spread<30;
+  localStorage.setItem('lOffset',String(lOffset));
+  if(lSyncOK) setSyncLabel('SYNC OK','#22c55e','HIGH','ok');
+  else setSyncLabel('SYNC MED','#f59e0b','MED','warn');
+}
+async function syncClock(){
+  const mode=lEl('l-syncmode')?.value||'baseline';
+
+  if(mode==='baseline'){
+    lOffset=0;
+    lSyncOK=false;
+    lSyncJitter=999;
+    localStorage.setItem('lOffset','0');
+    setSyncLabel('BASELINE','#f59e0b','BASELINE','warn');
+    return;
+  }
+
+  setSyncLabel('SYNC...','#f59e0b','SYNC...','warn');
+
+  try{
+    const results=mode==='custom'?await customTimeSync():await internetTimeSync();
+    if(!results.length) throw Error('No sync samples');
+    applySyncResults(results);
+  }catch(e){
+    // Hosted mode must still work without internet sync.
+    lOffset=0;
+    lSyncOK=false;
+    setSyncLabel('BASELINE','#f59e0b','FALLBACK','warn');
+  }
+}
+
+function calibrate(){if(lLastRead!=null){lBaseline=lLastRead;localStorage.setItem('lBaseline',lBaseline);lSamples=[];lRawSamples=[];lEl('l-base').textContent=Math.round(lBaseline)+' ms';lEl('l-status').textContent='KALIBRÁLVA';lEl('l-status').className='ok'}}
+function resetMeasure(){lSamples=[];lRawSamples=[];lBaseline=0;lLastRead=null;localStorage.setItem('lBaseline','0');['l-raw','l-lat','l-avg'].forEach(id=>lEl(id).textContent='-- ms');lEl('l-minmax').textContent='-- / --';lEl('l-conf').textContent='--';lEl('l-conf').className='warn'}
+
+function setLatMode(){
+  let phone=lEl('l-mode').value==='phone';
+  lv.style.display=phone?'block':'none';
+  lc.style.display=phone?'none':'block';
+  lGuide.style.display=phone?'block':'none';
+  lPanel.style.display=phone?'grid':'none';
+  lEl('l-start').style.display=phone?'inline-block':'none';
+  lEl('l-cal').style.display=phone?'inline-block':'none';
+  lEl('l-reset').style.display=phone?'inline-block':'none'
+}
+
+function lDraw(){
+  if(!document.getElementById('view-lat').classList.contains('active')){requestAnimationFrame(lDraw);return}
+  lResize();
+  if(lEl('l-mode').value==='gen')drawGmMarker();
+  else analyzeMarker();
+  requestAnimationFrame(lDraw)
+}
+
+// ── KEYBOARD ──
+addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT')return;
+  if(e.code==='KeyF')document.documentElement.requestFullscreen?.();
+  if(e.code==='Space'){e.preventDefault();document.getElementById('g-pause').click()}
+  if(e.code==='KeyR')document.getElementById('g-reset').click();
+  if(e.code==='KeyH')document.getElementById('g-clean').click();
+  if(e.code==='KeyS')syncClock();
+  if(e.code==='Digit1')switchTab('gen');
+  if(e.code==='Digit2')switchTab('lat')
+});
+
+// ── URL PARAM BOOT ──
+function bootFromUrl(){
+  const q=new URLSearchParams(location.search);
+  if(q.get('tab')==='lat') switchTab('lat');
+  if(q.get('mode')==='phone'){
+    lEl('l-mode').value='phone';
+    setLatMode();
+  }
+  if(q.get('sync')){
+    lEl('l-syncmode').value=q.get('sync');
+    setTimeout(()=>syncClock(),800);
+  }
+}
+
+// ── START ──
+gDraw();lDraw();setLatMode();bootFromUrl();
+
+</script></body></html>
