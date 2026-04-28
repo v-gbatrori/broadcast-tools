@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Grandmaster Latency Meter V2 - Hideable Titlebar</title>
+<title>Grandmaster Latency Meter V2 - Pro Phone Analyzer UI</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{
@@ -57,6 +57,20 @@ button{cursor:pointer}
 button:hover,select:hover,input:hover{border-color:#38bdf8}
 button.primary{background:#10253a;border-color:#2563eb;color:#e0f2fe}
 button.audioOn{color:#22c55e}
+
+#lat-ui{transition:.22s ease}
+#lat-ui.hidden,#hint.hidden{opacity:0;transform:translateY(-18px);pointer-events:none}
+body.clean-marker:before{display:none}
+body.clean-marker #titlebar,
+body.clean-marker #lat-ui,
+body.clean-marker #hint,
+body.clean-marker #lat-panel,
+body.clean-marker #phone-hud{display:none!important}
+body.clean-marker #lat-canvas,
+body.clean-marker #lat-video,
+body.clean-marker #lat-scan{top:0;height:100vh}
+body.clean-marker #lat-guide{top:0}
+
 .pill{
   background:#0b1a2c;border:1px solid #1f3b5d;border-radius:999px;padding:7px 10px;
   color:#38bdf8;font:800 11px monospace
@@ -129,6 +143,204 @@ body.phone-mode.details #phone-hud{border-color:rgba(245,158,11,.55)}
   .hudItem{padding:5px 6px}.hudItem b{font-size:12px}
   body.phone-mode.details #lat-panel{bottom:114px;max-height:44vh;grid-template-columns:1fr}
 }
+
+/* phone analyzer fix */
+#phone-start-overlay{display:none}
+body.phone-mode #titlebar{display:none!important}
+body.phone-mode #lat-video,
+body.phone-mode #lat-canvas,
+body.phone-mode #lat-scan{top:0;height:100vh}
+body.phone-mode #lat-guide{top:0}
+body.phone-mode #lat-ui{
+  top:calc(env(safe-area-inset-top,0px) + 8px);
+  left:8px;right:8px;
+  max-height:86px;
+  overflow:auto;
+  padding:8px;
+  border-radius:14px;
+  background:rgba(3,7,18,.82);
+  backdrop-filter:blur(10px);
+}
+body.phone-mode #lat-ui > span,
+body.phone-mode #l-syncmode,
+body.phone-mode #l-timeurl,
+body.phone-mode #lat-ui button[onclick="syncClock()"],
+body.phone-mode #lat-ui button[onclick="showQR()"],
+body.phone-mode #l-tc,
+body.phone-mode #l-sync,
+body.phone-mode #l-hosted{
+  display:none!important;
+}
+body.phone-mode #l-mode{
+  max-width:100%;
+  flex:1 1 100%;
+}
+body.phone-mode #l-start,
+body.phone-mode #l-cal,
+body.phone-mode #l-reset,
+body.phone-mode #lat-ui button[onclick*="requestFullscreen"]{
+  flex:1 1 calc(50% - 8px);
+  min-height:44px;
+  font-size:13px;
+}
+body.phone-mode.cam-on #lat-ui{display:none!important}
+body.phone-mode.cam-on #phone-start-overlay{display:none!important}
+body.phone-mode:not(.cam-on) #phone-start-overlay{
+  display:flex;
+  position:fixed;
+  left:10px;right:10px;
+  top:calc(env(safe-area-inset-top,0px) + 104px);
+  z-index:20;
+  min-height:130px;
+  border:1px solid rgba(56,189,248,.32);
+  border-radius:18px;
+  background:rgba(3,7,18,.86);
+  backdrop-filter:blur(12px);
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+  gap:10px;
+  padding:16px;
+  text-align:center;
+}
+#phone-start-overlay button{
+  width:100%;
+  max-width:420px;
+  min-height:56px;
+  font-size:17px;
+  border-color:#38bdf8;
+  background:linear-gradient(135deg,rgba(14,165,233,.35),rgba(37,99,235,.32));
+  color:#e0f2fe;
+}
+#phone-start-overlay div{
+  color:#9fb2d0;
+  font:700 12px monospace;
+  line-height:1.45;
+}
+body.phone-mode #phone-hud{
+  left:8px;right:8px;
+  bottom:calc(env(safe-area-inset-bottom,0px) + 8px);
+  grid-template-columns:1.15fr 1fr 1fr;
+  gap:7px;
+  padding:8px;
+  background:rgba(3,7,18,.88);
+}
+body.phone-mode .hudItem{
+  padding:9px 10px;
+  border-radius:12px;
+}
+body.phone-mode .hudItem span{
+  font-size:9px;
+  letter-spacing:.12em;
+}
+body.phone-mode .hudItem b{
+  font-size:19px;
+  line-height:1.2;
+}
+body.phone-mode #hud-details{
+  min-height:48px;
+  font-size:14px;
+}
+body.phone-mode #phone-hud .hudItem:nth-child(4){
+  grid-column:1 / span 2;
+}
+body.phone-mode #phone-hud #hud-details{
+  grid-column:3;
+}
+body.phone-mode.details #lat-panel{
+  bottom:calc(env(safe-area-inset-bottom,0px) + 118px)!important;
+  max-height:45vh!important;
+}
+@media(max-width:480px){
+  body.phone-mode #phone-hud{grid-template-columns:1fr 1fr}
+  body.phone-mode #phone-hud .hudItem:nth-child(4){grid-column:1}
+  body.phone-mode #phone-hud #hud-details{grid-column:2}
+  body.phone-mode .hudItem b{font-size:18px}
+}
+
+
+/* phone pro analyzer UI */
+#phone-hero,#phone-history{display:none}
+body.phone-mode.cam-on #phone-hero{
+  display:block;
+  position:fixed;
+  left:14px;
+  right:14px;
+  top:calc(env(safe-area-inset-top,0px) + 12px);
+  z-index:15;
+  pointer-events:none;
+}
+#phone-delay-main{
+  color:#d7ff5f;
+  font:950 clamp(30px,8.5vw,58px) Inter,system-ui,sans-serif;
+  line-height:1.02;
+  letter-spacing:-.04em;
+  text-shadow:0 3px 20px rgba(215,255,95,.16);
+}
+#phone-delay-sub{
+  margin-top:6px;
+  color:#9fb2d0;
+  font:800 12px ui-monospace,monospace;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+body.phone-mode.cam-on.audio-early #phone-delay-main{color:#ff4fd8;text-shadow:0 3px 20px rgba(255,79,216,.16)}
+body.phone-mode.cam-on.lock-good #phone-delay-main{color:#d7ff5f}
+body.phone-mode.cam-on.lock-warn #phone-delay-main{color:#fbbf24}
+body.phone-mode.cam-on.lock-bad #phone-delay-main{color:#ef4444}
+
+body.phone-mode.cam-on #phone-history{
+  display:block;
+  position:fixed;
+  right:14px;
+  top:calc(env(safe-area-inset-top,0px) + 104px);
+  z-index:15;
+  width:min(160px,34vw);
+  max-height:24vh;
+  overflow:hidden;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.10);
+  background:rgba(3,7,18,.42);
+  backdrop-filter:blur(8px);
+  pointer-events:none;
+}
+.histTitle{
+  color:#94a3b8;
+  font:800 9px ui-monospace,monospace;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  margin-bottom:6px;
+}
+#phone-history-list{
+  color:#cbd5e1;
+  font:800 11px ui-monospace,monospace;
+  line-height:1.45;
+  white-space:pre-line;
+}
+body.phone-mode.cam-on #lat-guide:after{
+  top:50%;
+  width:min(72vw,54vh);
+  height:min(72vw,54vh);
+  padding-top:9px;
+  font-size:9px;
+}
+body.phone-mode.cam-on #phone-hud{
+  grid-template-columns:1fr 1fr 1fr;
+}
+body.phone-mode.cam-on .hudItem span{font-size:8px}
+body.phone-mode.cam-on .hudItem b{font-size:17px}
+@media(max-width:480px){
+  body.phone-mode.cam-on #phone-history{
+    top:auto;
+    right:14px;
+    bottom:calc(env(safe-area-inset-bottom,0px) + 128px);
+    width:min(150px,36vw);
+    max-height:120px;
+    opacity:.72;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -136,13 +348,17 @@ body.phone-mode.details #phone-hud{border-color:rgba(245,158,11,.55)}
   <a class="navTab" href="./index.html">HOME</a>
   <a class="navTab" href="./input-test-signal-generator-v3.html">INPUT TEST SIGNAL GENERATOR</a>
   <a class="navTab active" href="./grandmaster-latency-meter.html">GRANDMASTER LATENCY METER</a>
-  <div class="brand">V2 TRACKING · MOBILE HUD</div>
+  <div class="brand">V2 TRACKING · PRO PHONE UI</div>
 </div>
 
 <canvas id="lat-canvas"></canvas>
 <video id="lat-video" playsinline muted></video>
 <canvas id="lat-scan"></canvas>
 <div id="lat-guide"></div>
+<div id="phone-start-overlay">
+  <button onclick="startCamera()">TAP TO START CAMERA</button>
+  <div>Camera permission is required. If mic is blocked, video measurement still works.</div>
+</div>
 
 <div id="lat-ui">
   <span style="font:700 11px monospace;color:#3a5070;letter-spacing:.1em">LATENCY</span>
@@ -164,6 +380,7 @@ body.phone-mode.details #phone-hud{border-color:rgba(245,158,11,.55)}
   <button onclick="syncClock()">Sync clock</button>
   <button onclick="showQR()">Phone QR</button>
   <button onclick="document.documentElement.requestFullscreen?.()">Fullscreen</button>
+  <button id="l-cleanmode" onclick="toggleCleanMode()">Clean fullscreen</button>
 
   <button id="l-audio-on" onclick="startAudioMarker()">Audio marker ON</button>
   <button id="l-audio-off" onclick="stopAudioMarker()">Audio OFF</button>
@@ -186,7 +403,7 @@ body.phone-mode.details #phone-hud{border-color:rgba(245,158,11,.55)}
     <div style="font:700 13px monospace;color:#38bdf8;letter-spacing:.1em;margin-bottom:14px">PHONE ANALYZER URL</div>
     <div id="qr-img"></div>
     <div id="qr-url"></div>
-    <div style="font:11px monospace;color:#7890b3;margin-bottom:16px">Open this URL on the phone. Camera + microphone analyzer starts from the same standalone HTML.</div>
+    <div style="font:11px monospace;color:#7890b3;margin-bottom:16px">Open this URL on the phone, then tap Start camera + mic. If microphone is blocked, it falls back to camera-only.</div>
     <button onclick="copyQRUrl()">Copy URL</button>
     <button onclick="hideQR()">Close</button>
   </div>
@@ -205,6 +422,16 @@ body.phone-mode.details #phone-hud{border-color:rgba(245,158,11,.55)}
   <div class="m"><span>AVERAGE</span><b id="l-avg">-- ms</b></div>
   <div class="m"><span>MIN / MAX</span><b id="l-minmax">-- / --</b></div>
   <div class="m"><span>CLOCK SYNC</span><b id="l-syncstat" class="warn">BASELINE</b></div>
+</div>
+
+<div id="phone-hero">
+  <div id="phone-delay-main">Delay: -- ms</div>
+  <div id="phone-delay-sub">waiting for marker lock</div>
+</div>
+
+<div id="phone-history">
+  <div class="histTitle">value history</div>
+  <div id="phone-history-list">--</div>
 </div>
 
 <div id="phone-hud">
@@ -227,7 +454,7 @@ let lSamples=[],lRawSamples=[],lLastRead=null,lCam=false,lLastW=0,lLastH=0;
 let lAudioCtx=null,lAudioGain=null,lAudioEnabled=false,lNextAudioTick=0;
 let lMicCtx=null,lMicAnalyser=null,lMicLoop=null,lLastAudioHit=0,lAudioNoiseFloor=.006,lLastAudioRaw=null;
 let lAudioBaseline=+localStorage.getItem('lAudioBaseline')||0,lAudioRawSamples=[],lAudioSamples=[],lFusedSamples=[];
-let lastPhoneUrl='';let gmTitleHidden=false;
+let lastPhoneUrl='';let gmTitleHidden=false;let lCleanMode=false;let lUiHidden=false;let lUiTimer=null;let phoneValueHistory=[];
 
 function lEl(id){return document.getElementById(id)}
 function updateHud(){
@@ -240,6 +467,49 @@ function updateHud(){
   if(lEl('hud-video'))lEl('hud-video').textContent=hv;
   if(lEl('hud-audio'))lEl('hud-audio').textContent=ha;
   if(lEl('hud-fused'))lEl('hud-fused').textContent=hf;
+  updatePhoneHero();
+}
+function parseMsText(t){
+  const m=String(t||'').match(/-?\d+/);
+  return m?Number(m[0]):null;
+}
+function pushPhoneHistory(v){
+  if(v==null || !Number.isFinite(v))return;
+  const rounded=Math.round(v);
+  if(phoneValueHistory.length && phoneValueHistory[0]===rounded)return;
+  phoneValueHistory.unshift(rounded);
+  phoneValueHistory=phoneValueHistory.slice(0,8);
+}
+function updatePhoneHero(){
+  const main=lEl('phone-delay-main'),sub=lEl('phone-delay-sub'),hist=lEl('phone-history-list');
+  if(!main||!sub)return;
+  const video=parseMsText(lEl('l-lat')?.textContent);
+  const audio=parseMsText(lEl('l-audiolat')?.textContent);
+  const fused=parseMsText(lEl('l-fused')?.textContent);
+  let val=fused!=null?fused:(video!=null?video:audio);
+  document.body.classList.remove('audio-early','lock-good','lock-warn','lock-bad');
+  if(val==null){
+    main.textContent='Delay: -- ms';
+    sub.textContent=lCam?'searching marker lock':'tap to start camera';
+    document.body.classList.add('lock-warn');
+  }else{
+    pushPhoneHistory(val);
+    const abs=Math.abs(Math.round(val));
+    if(audio!=null && audio<0 && (video==null || Math.abs(audio)<Math.abs(video))){
+      main.textContent='Audio is '+abs+' ms early.';
+      document.body.classList.add('audio-early');
+    }else{
+      main.textContent='Delay: '+Math.round(val)+' ms.';
+      document.body.classList.add(abs<=20?'lock-good':abs<=80?'lock-warn':'lock-bad');
+    }
+    const c=lEl('l-conf')?.textContent||'--';
+    sub.textContent='video '+(video==null?'--':video+' ms')+' · audio '+(audio==null?'--':audio+' ms')+' · confidence '+c;
+  }
+  if(hist){
+    hist.textContent=phoneValueHistory.length
+      ? phoneValueHistory.map((x,i)=>String(x).padStart(4,' ')+' ms   #'+String(i+1).padStart(2,'0')).join('\n')
+      : '--';
+  }
 }
 function togglePhoneDetails(){
   document.body.classList.toggle('details');
@@ -247,7 +517,8 @@ function togglePhoneDetails(){
 }
 
 function lResize(){
-  let w=Math.floor(innerWidth),h=Math.floor(innerHeight-44);
+  const r=lc.getBoundingClientRect();
+  let w=Math.floor(r.width||innerWidth),h=Math.floor(r.height||innerHeight);
   if(w!==lLastW||h!==lLastH){lc.width=ls.width=lLastW=w;lc.height=ls.height=lLastH=h}
 }
 function lNow(){return Date.now()+lOffset}
@@ -335,39 +606,64 @@ function drawGmMarker(){
   lEl('l-tc').textContent='GM '+lClockText(now);
   lx.fillStyle='#020617';lx.fillRect(0,0,w,h);
 
-  // subtle tracking-safe background grid
-  lx.strokeStyle='rgba(56,189,248,.08)';lx.lineWidth=1;
-  let gs=Math.max(48,Math.round(Math.min(w,h)/12));
+  lx.strokeStyle=lCleanMode?'rgba(56,189,248,.05)':'rgba(56,189,248,.08)';lx.lineWidth=1;
+  let gs=Math.max(lCleanMode?56:42,Math.round(Math.min(w,h)/(lCleanMode?10:12)));
   for(let x=0;x<w;x+=gs){lx.beginPath();lx.moveTo(x,0);lx.lineTo(x,h);lx.stroke()}
   for(let y=0;y<h;y+=gs){lx.beginPath();lx.moveTo(0,y);lx.lineTo(w,y);lx.stroke()}
 
-  // corner tracking markers
-  const cm=Math.max(76,Math.min(w,h)*.105), m=Math.max(22,Math.min(w,h)*.035);
-  drawCornerMarker(lx,m,m,cm,1);
-  drawCornerMarker(lx,w-m-cm,m,cm,2);
+  const clamp=(vv,a,b)=>Math.max(a,Math.min(b,vv));
+
+  if(lCleanMode){
+    lx.textAlign='center';
+    const clockFont=clamp(Math.min(w/9,h/6),30,96);
+    const topPad=Math.max(18,h*.04),gap=Math.max(18,h*.03),bottomPad=Math.max(20,h*.04);
+    const markerMaxH=h-topPad-bottomPad-clockFont-gap;
+    const s=clamp(Math.min(w*.56,markerMaxH*.92),170,Math.min(w*.7,h*.72));
+    const markerCy=topPad+s/2;
+    drawDataMarker(lx,w/2,markerCy,s,v,'');
+    lx.fillStyle='#dbeafe';
+    lx.font='900 '+clockFont+'px monospace';
+    const clockY=Math.min(h-bottomPad,markerCy+s*.56+gap+clockFont*.45);
+    lx.fillText(lClockText(now),w/2,clockY);
+    lx.textAlign='start';
+    return;
+  }
+
+  const compact=(h<860||w<1280);
+  const cm=clamp(Math.min(w,h)*(compact?.08:.1),56,90), m=clamp(Math.min(w,h)*(compact?.022:.03),14,26);
+  const topSafe=markerTopSafe(m);
+  drawCornerMarker(lx,m,topSafe,cm,1);
+  drawCornerMarker(lx,w-m-cm,topSafe,cm,2);
   drawCornerMarker(lx,m,h-m-cm,cm,3);
   drawCornerMarker(lx,w-m-cm,h-m-cm,cm,4);
 
   lx.fillStyle='#c8e8ff';lx.textAlign='center';
-  lx.font='900 '+Math.max(28,w/34)+'px monospace';
-  lx.fillText('GRANDMASTER TRACKING MARKER',w/2,h*.105);
-  lx.font='700 '+Math.max(14,w/66)+'px monospace';
+  const titleFont=clamp(Math.min(w/24,h/9),22,54), subFont=clamp(Math.min(w/52,h/18),12,24), clockFont=clamp(Math.min(w/14,h/8),30,72), statusFont=clamp(Math.min(w/64,h/22),11,20);
+  const headerY=Math.max(topSafe + cm + Math.max(20,h*.018), h*.085);
+  lx.font='900 '+titleFont+'px monospace';
+  lx.fillText('GRANDMASTER TRACKING MARKER',w/2,headerY);
+  lx.font='700 '+subFont+'px monospace';
   lx.fillStyle='#a9d9ff';
-  lx.fillText('GM mod 65536ms: '+Math.floor(v)+'   FRAME MARKER   '+(lAudioEnabled?'AUDIO ON':'AUDIO OFF'),w/2,h*.165);
+  const subY=headerY+Math.max(24,h*.034);
+  lx.fillText('GM mod 65536ms: '+Math.floor(v)+'   FRAME MARKER   '+(lAudioEnabled?'AUDIO ON':'AUDIO OFF'),w/2,subY);
 
-  // large center payload marker for long-distance camera lock
-  const s=Math.min(w*.46,h*.52);
-  drawDataMarker(lx,w/2,h*.48,s,v,'LARGE CENTER SYNC MARKER');
+  const markerTop=subY+Math.max(18,h*.022);
+  const bottomReserve=clockFont+statusFont+Math.max(40,h*.055);
+  const markerHeightBudget=Math.max(120,h-markerTop-bottomReserve-(m+cm*.55));
+  const s=clamp(Math.min(w*(compact?.34:.42), h*(compact?.30:.42), markerHeightBudget/1.12), 150, Math.min(w*.46,h*.46));
+  const markerCy=markerTop+s/2;
+  drawDataMarker(lx,w/2,markerCy,s,v,compact?'SYNC MARKER':'LARGE CENTER SYNC MARKER');
 
   lx.fillStyle='#dbeafe';
-  lx.font='900 '+Math.max(42,w/28)+'px monospace';
-  lx.fillText(lClockText(now),w/2,h*.88);
-  lx.font='700 '+Math.max(14,w/75)+'px monospace';
+  lx.font='900 '+clockFont+'px monospace';
+  const markerLabelBottom=markerCy+s*.61;
+  const clockY=Math.min(h-statusFont-Math.max(14,h*.02)-Math.max(26,h*.03), markerLabelBottom+Math.max(26,h*.034));
+  lx.fillText(lClockText(now),w/2,clockY);
+  lx.font='700 '+statusFont+'px monospace';
   lx.fillStyle=lSyncOK?'#22c55e':'#f59e0b';
-  lx.fillText(lSyncOK?'CLOCK SYNC HIGH':'BASELINE / FALLBACK READY',w/2,h*.93);
+  lx.fillText(lSyncOK?'CLOCK SYNC HIGH':'BASELINE / FALLBACK READY',w/2,Math.min(h-Math.max(12,h*.016), clockY+Math.max(24,h*.03)));
   lx.textAlign='start'
 }
-
 
 function readMarker(){
   if(!lCam||lv.videoWidth<10)return null;
@@ -401,6 +697,57 @@ function jScore(){
   return lClamp(1-sd/65,0,1)
 }
 function confLabel(s){return s>=.78?['HIGH','ok']:s>=.48?['MED','warn']:['LOW','bad']}
+
+function markerTopSafe(baseMargin){
+  if(lCleanMode) return baseMargin;
+  const title = document.getElementById('titlebar');
+  const ui = document.getElementById('lat-ui');
+  const titleVisible = !!(title && !title.classList.contains('hidden'));
+  const uiVisible = !!(ui && getComputedStyle(ui).display !== 'none' && !ui.classList.contains('hidden'));
+  const titleBottom = titleVisible ? (title.offsetHeight || 40) : 0;
+  const uiBottom = uiVisible ? ((ui.offsetTop || 56) + (ui.offsetHeight || 56)) : 0;
+  return Math.max(baseMargin, titleBottom, uiBottom) + 18;
+}
+function updateCleanButton(){
+  const b=lEl('l-cleanmode');if(!b)return;
+  b.textContent=lCleanMode?'Clean ON':'Clean fullscreen';
+  b.classList.toggle('primary',lCleanMode);
+}
+async function toggleCleanMode(force){
+  const next=typeof force==='boolean'?force:!lCleanMode;
+  lCleanMode=next && lEl('l-mode').value==='gen';
+  document.body.classList.toggle('clean-marker',lCleanMode);
+  updateCleanButton();
+  if(lCleanMode && !document.fullscreenElement){
+    try{await document.documentElement.requestFullscreen?.()}catch(e){}
+  }
+}
+function setTopUiHidden(hidden){
+  lUiHidden=hidden;
+  const title=document.getElementById('titlebar');
+  const ui=document.getElementById('lat-ui');
+  const hint=document.getElementById('hint');
+  title?.classList.toggle('hidden',hidden);
+  ui?.classList.toggle('hidden',hidden);
+  hint?.classList.toggle('hidden',hidden);
+}
+function scheduleTopUiHide(){
+  clearTimeout(lUiTimer);
+  if(lEl('l-mode')?.value!=='gen' || lCleanMode) return;
+  lUiTimer=setTimeout(()=>setTopUiHidden(true),5000);
+}
+function wakeTopUi(){
+  if(lCleanMode || lEl('l-mode')?.value!=='gen') return;
+  setTopUiHidden(false);
+  scheduleTopUiHide();
+}
+document.addEventListener('fullscreenchange',()=>{
+  if(!document.fullscreenElement && lCleanMode){
+    lCleanMode=false;
+    document.body.classList.remove('clean-marker');
+    updateCleanButton();
+  }
+});
 
 function analyzeMarker(){
   let r=readMarker();if(!r)return;
@@ -456,14 +803,40 @@ function handleAudioMarker(ms,rms){
 }
 
 async function startCamera(){
+  const status=(txt,cls='warn')=>{lEl('l-status').textContent=txt;lEl('l-status').className=cls};
   try{
-    let s=await navigator.mediaDevices.getUserMedia({
-      video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},
-      audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}
-    });
-    lv.srcObject=s;await lv.play();setupMicAnalyzer(s);lCam=true;
-    lEl('l-status').textContent='CAM+MIC';lEl('l-status').className='ok'
-  }catch(e){lEl('l-status').textContent='NO CAM/MIC';lEl('l-status').className='bad'}
+    if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+      status(location.protocol==='https:'?'NO CAMERA API':'HTTPS NEEDED','bad');
+      return;
+    }
+    let s=null, audioOK=false;
+    try{
+      s=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},
+        audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}
+      });
+      audioOK=s.getAudioTracks().length>0;
+    }catch(firstErr){
+      // Some phones/browsers block microphone or audio constraints.
+      // Keep the video latency workflow alive by falling back to camera-only.
+      s=await navigator.mediaDevices.getUserMedia({
+        video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},
+        audio:false
+      });
+      audioOK=false;
+    }
+    lv.srcObject=s;
+    await lv.play();
+    if(audioOK) setupMicAnalyzer(s);
+    lCam=true;
+    document.body.classList.add('cam-on');
+    status(audioOK?'CAM+MIC':'CAMERA ONLY', audioOK?'ok':'warn');
+    updatePhoneHero();
+  }catch(e){
+    document.body.classList.remove('cam-on');
+    status('CAMERA FAIL','bad');
+    lEl('l-hosted').textContent=(location.protocol==='https:'?'Camera permission blocked':'HTTPS required for camera');
+  }
 }
 
 function baseHostedUrl(){const u=new URL(location.href);u.search='';u.hash='';return u.toString()}
@@ -581,6 +954,8 @@ function resetMeasure(){
 }
 function setLatMode(){
   let phone=lEl('l-mode').value==='phone';
+  if(phone&&lCleanMode){lCleanMode=false;document.body.classList.remove('clean-marker');updateCleanButton()}
+  if(!phone)document.body.classList.remove('cam-on');
   document.body.classList.toggle('phone-mode',phone);
   if(!phone)document.body.classList.remove('details');
   lv.style.display=phone?'block':'none';lc.style.display=phone?'none':'block';
@@ -591,6 +966,10 @@ function setLatMode(){
   lEl('l-audio-on').style.display=phone?'none':'inline-block';
   lEl('l-audio-off').style.display=phone?'none':'inline-block';
   lEl('l-audio-rate').style.display=phone?'none':'inline-block';
+  lEl('l-cleanmode').style.display=phone?'none':'inline-block';
+  if(phone) setTopUiHidden(false); else scheduleTopUiHide();
+  updateCleanButton();
+  if(phone && !lCam){lEl('l-status').textContent='TAP START';lEl('l-status').className='warn'}
   updateHud();
 }
 function lDraw(){
@@ -604,14 +983,16 @@ addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT')return;
   if(e.code==='KeyF')document.documentElement.requestFullscreen?.();
   if(e.code==='KeyH'){gmTitleHidden=!gmTitleHidden;document.getElementById('titlebar').classList.toggle('hidden',gmTitleHidden)}
-  if(e.code==='KeyS')syncClock()
+  if(e.code==='KeyS')syncClock();
+  if(e.code==='KeyM')toggleCleanMode();
 });
 function bootFromUrl(){
   const q=new URLSearchParams(location.search);
   if(q.get('mode')==='phone'){lEl('l-mode').value='phone';setLatMode()}
   if(q.get('sync')){lEl('l-syncmode').value=(q.get('sync')==='internet'?'auto':q.get('sync'));setTimeout(()=>syncClock(),800)}
 }
-setLatMode();bootFromUrl();lDraw();
+['mousemove','touchstart','keydown'].forEach(ev=>document.addEventListener(ev,wakeTopUi,{passive:true}));
+setLatMode();updateCleanButton();bootFromUrl();lDraw();
 lEl('l-base').textContent=Math.round(lBaseline)+' ms';
 lEl('l-audiobase').textContent=Math.round(lAudioBaseline)+' ms';
 </script>
