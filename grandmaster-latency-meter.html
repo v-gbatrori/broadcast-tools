@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Grandmaster Binary Phase Matrix V1</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100%;height:100%;background:#030712;color:#e7f0ff;font-family:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;overflow:hidden}
+#titlebar{
+  position:fixed;top:0;left:0;right:0;height:40px;z-index:30;
+  background:#090a0f;border-bottom:1px solid #1e2535;
+  display:flex;align-items:center;gap:22px;padding:0 18px
+}
+#titlebar a,#titlebar span{
+  height:40px;display:flex;align-items:center;text-decoration:none;
+  color:#6b7b99;font:900 12px monospace;letter-spacing:.14em;border-bottom:2px solid transparent;white-space:nowrap
+}
+#titlebar a:hover{color:#fff;border-bottom-color:#38bdf8}
+#titlebar .active{color:#fff;border-bottom-color:#38bdf8}
+#titlebar .brand{margin-left:auto;color:#203050;font:700 10px monospace;letter-spacing:.18em}
+#stage,#video,#scan{position:absolute;left:0;top:40px;width:100vw;height:calc(100vh - 40px)}
+#stage{z-index:1;background:#020617}
+#video{z-index:1;object-fit:cover;display:none;background:#000}
+#scan{display:none}
+#guide{
+  display:none;position:absolute;left:0;right:0;top:40px;bottom:0;z-index:3;pointer-events:none;
+  background:rgba(0,0,0,.06);box-shadow:inset 0 0 0 2px rgba(56,189,248,.16)
+}
+#guide:after{
+  content:"ALIGN MATRIX PANEL HERE";position:absolute;left:50%;top:48%;
+  width:min(82vw,62vh);height:min(82vw,62vh);transform:translate(-50%,-50%);
+  border:5px solid rgba(245,158,11,.92);box-shadow:0 0 0 9999px rgba(0,0,0,.10), inset 0 0 0 2px rgba(56,189,248,.75);
+  display:flex;align-items:flex-start;justify-content:center;padding-top:12px;
+  color:#fbbf24;font:900 13px monospace;letter-spacing:.16em;text-align:center
+}
+#guide:before{
+  content:"";position:absolute;left:50%;top:48%;width:min(6vw,6vh);height:min(6vw,6vh);
+  transform:translate(-50%,-50%);border:3px solid rgba(56,189,248,.95);border-radius:50%
+}
+
+/* Desktop side panels */
+#uiLeft,#uiRight{
+  position:fixed;top:58px;z-index:20;width:286px;display:flex;flex-direction:column;gap:10px;
+}
+#uiLeft{left:10px}
+#uiRight{right:10px}
+.panel{
+  background:rgba(8,13,26,.88);
+  border:1px solid #1f2a44;border-radius:14px;padding:12px;
+  backdrop-filter:blur(10px);
+}
+.panel h3{
+  color:#53647f;font:900 10px monospace;letter-spacing:.16em;margin-bottom:10px
+}
+.stack{display:flex;flex-direction:column;gap:8px}
+.row{display:flex;gap:8px;align-items:center}
+.row > *{min-width:0;flex:1 1 auto}
+button,select,input{
+  width:100%;
+  background:#0b1320;color:#cfe3ff;border:1px solid #1f2a44;border-radius:10px;
+  padding:10px 11px;font:800 12px monospace;outline:none
+}
+button{cursor:pointer}
+button:hover,select:hover,input:hover{border-color:#38bdf8}
+button.primary{background:#10253a;border-color:#38bdf8;color:#e0f2fe}
+.pill{
+  background:#0b1a2c;border:1px solid #1f3b5d;border-radius:999px;padding:8px 11px;
+  color:#38bdf8;font:900 12px monospace;display:inline-flex;align-items:center;justify-content:center;min-height:38px
+}
+.ok{color:#22c55e!important}.warn{color:#f59e0b!important}.bad{color:#ef4444!important}
+.infoLine{color:#9fb2d0;font:800 12px monospace;line-height:1.45}
+#phoneHud{
+  display:none;position:fixed;left:10px;right:10px;bottom:calc(env(safe-area-inset-bottom,0px) + 10px);z-index:22;
+  grid-template-columns:1.2fr 1fr 1fr;gap:8px;background:rgba(3,7,18,.90);
+  border:1px solid rgba(56,189,248,.26);border-radius:18px;padding:10px;backdrop-filter:blur(10px)
+}
+.hudBox{background:rgba(8,13,26,.88);border:1px solid #1f2a44;border-radius:14px;padding:10px}
+.hudBox span{display:block;color:#7b8aaa;font:900 10px monospace;letter-spacing:.13em;margin-bottom:5px}
+.hudBox b{display:block;color:#e7f0ff;font:900 24px monospace;line-height:1.15}
+#hist{
+  display:none;position:fixed;right:24px;bottom:158px;z-index:23;
+  background:rgba(0,0,0,.50);border:1px solid rgba(255,255,255,.12);border-radius:18px;
+  padding:16px 20px;color:#dbeafe;font:900 17px monospace;line-height:1.55;backdrop-filter:blur(10px)
+}
+#hist span{display:block;color:#9aa8c7;font:900 12px monospace;letter-spacing:.18em;margin-bottom:8px}
+#startOverlay{
+  display:none;position:fixed;left:12px;right:12px;top:calc(env(safe-area-inset-top,0px) + 95px);z-index:40;
+  background:rgba(3,7,18,.88);border:1px solid rgba(56,189,248,.32);border-radius:20px;
+  padding:18px;backdrop-filter:blur(12px);text-align:center
+}
+#startOverlay button{width:100%;min-height:60px;font-size:17px;border-color:#38bdf8;background:linear-gradient(135deg,rgba(14,165,233,.34),rgba(37,99,235,.30))}
+#startOverlay div{color:#9fb2d0;font:800 12px monospace;line-height:1.45;margin-top:10px}
+#miniHelp{
+  position:fixed;left:16px;bottom:14px;z-index:8;
+  background:rgba(0,0,0,.45);border:1px solid rgba(255,255,255,.12);border-radius:9px;
+  color:#7890b3;font:700 11px monospace;padding:8px 10px
+}
+
+body.phone #titlebar{display:none}
+body.phone #stage,body.phone #video,body.phone #scan{top:0;height:100vh}
+body.phone #guide{top:0}
+body.phone #miniHelp{display:none}
+body.phone #uiLeft, body.phone #uiRight{display:none!important}
+body.phone #phoneUi{
+  position:fixed;top:calc(env(safe-area-inset-top,0px) + 8px);left:8px;right:8px;z-index:20;
+  display:flex;flex-wrap:wrap;gap:8px;background:rgba(3,7,18,.84);
+  border:1px solid #1f2a44;border-radius:14px;padding:8px;backdrop-filter:blur(8px);max-height:108px;overflow:auto
+}
+body.phone #phoneUi > *{flex:1 1 calc(50% - 8px);min-width:0}
+body.phone #phoneUi .full{flex-basis:100%}
+body.phone.camOn #phoneUi{display:none!important}
+body.phone.camOn #phoneHud{display:grid}
+body.phone.camOn #hist{display:block}
+body.phone:not(.camOn) #startOverlay{display:block}
+body.clean #titlebar,body.clean #uiLeft,body.clean #uiRight,body.clean #miniHelp{display:none!important}
+body.clean #stage{top:0;height:100vh}
+body:not(.phone) #phoneUi{display:none}
+@media(max-width:1200px){
+  #uiLeft,#uiRight{width:248px}
+}
+@media(max-width:480px){
+  #phoneHud{grid-template-columns:1fr 1fr}
+  #phoneHud .wide{grid-column:1 / span 2}
+  .hudBox b{font-size:22px}
+  #hist{right:14px;bottom:160px;font-size:14px}
+}
+</style>
+</head>
+<body>
+<div id="titlebar">
+  <a href="./index.html">HOME</a>
+  <a href="./input-test-signal-generator-v3.html">INPUT TEST SIGNAL GENERATOR</a>
+  <span class="active">GRANDMASTER LATENCY METER</span>
+  <div class="brand">BINARY MATRIX V1</div>
+</div>
+
+<canvas id="stage"></canvas>
+<video id="video" playsinline muted></video>
+<canvas id="scan"></canvas>
+<div id="guide"></div>
+
+<!-- Desktop left -->
+<div id="uiLeft">
+  <div class="panel">
+    <h3>MODE</h3>
+    <div class="stack">
+      <select id="mode" onchange="setMode()">
+        <option value="gen">Master Generator</option>
+        <option value="phone">Phone Analyzer</option>
+      </select>
+      <select id="profile" onchange="profileChanged()">
+        <option value="safe">Safe 8x8 · 3000ms</option>
+        <option value="standard">Standard 8x8 · 2000ms</option>
+        <option value="precision">Precision 10x10 · 1200ms</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>SYNC</h3>
+    <div class="stack">
+      <select id="syncMode">
+        <option value="auto">Internet Auto</option>
+        <option value="timeapi">TimeAPI.io</option>
+        <option value="worldtime">WorldTimeAPI</option>
+        <option value="baseline">Baseline only</option>
+        <option value="custom">Custom URL</option>
+      </select>
+      <input id="timeUrl" placeholder="Optional time URL">
+      <button onclick="syncClock()">Sync internet</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>TOOLS</h3>
+    <div class="stack">
+      <div class="row">
+        <button onclick="document.documentElement.requestFullscreen?.()">Fullscreen</button>
+        <button onclick="toggleClean()">Clean mode</button>
+      </div>
+      <div class="row">
+        <button id="startCamDesktop" onclick="startCamera()">Start camera</button>
+        <button onclick="calibrateBaseline()">Set baseline</button>
+      </div>
+      <button onclick="resetAll()">Reset</button>
+    </div>
+  </div>
+</div>
+
+<!-- Desktop right -->
+<div id="uiRight">
+  <div class="panel">
+    <h3>MASTER CLOCK</h3>
+    <div class="stack">
+      <div id="gmText" class="pill">GM --</div>
+      <div id="netText" class="pill warn">SYNC --</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>INFO</h3>
+    <div class="stack">
+      <div class="infoLine" id="profileInfo">SAFE · 8x8 · 3000ms</div>
+      <div class="infoLine">Large smooth matrix for phone-camera latency measurement.</div>
+      <div class="infoLine">The big matrix is centered. Side space is used for settings.</div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h3>QUICK NOTE</h3>
+    <div class="stack">
+      <div class="infoLine">1. Laptop: Master Generator + Fullscreen</div>
+      <div class="infoLine">2. Phone: Phone Analyzer + Start camera</div>
+      <div class="infoLine">3. Align and then Set baseline</div>
+    </div>
+  </div>
+</div>
+
+<!-- Phone-only compact UI -->
+<div id="phoneUi">
+  <select id="modePhone" class="full" onchange="syncPhoneMode(this.value)">
+    <option value="gen">Master Generator</option>
+    <option value="phone">Phone Analyzer</option>
+  </select>
+  <button onclick="startCamera()">Start camera</button>
+  <button onclick="calibrateBaseline()">Set baseline</button>
+  <button onclick="document.documentElement.requestFullscreen?.()">Fullscreen</button>
+  <button onclick="resetAll()">Reset</button>
+</div>
+
+<div id="startOverlay">
+  <button onclick="startCamera()">TAP TO START CAMERA</button>
+  <div>No QR decoding. No flash. The phone measures the smooth brightness phase of a large binary matrix.</div>
+</div>
+
+<div id="phoneHud">
+  <div class="hudBox"><span>STATUS</span><b id="hStatus" class="warn">READY</b></div>
+  <div class="hudBox"><span>LATENCY</span><b id="hVideo">-- ms</b></div>
+  <div class="hudBox"><span>CONF</span><b id="hConf">--</b></div>
+  <div class="hudBox wide"><span>WEB → CAMERA DELAY</span><b id="hFinal">-- ms</b></div>
+  <div class="hudBox"><span>NET / CLOCK</span><b id="hNet">--</b></div>
+</div>
+
+<div id="hist"><span>VALUE HISTORY</span><div id="histLines">--</div></div>
+<div id="miniHelp">M clean · S sync · F fullscreen · side panels on desktop</div>
+
+<script>
+const c=document.getElementById('stage'),ctx=c.getContext('2d');
+const v=document.getElementById('video');
+const sc=document.getElementById('scan'),sx=sc.getContext('2d');
+
+let W=0,H=0,offset=0,netRtt=null,netJitter=null,netUnc=null,syncLabel='BASELINE';
+let clean=false,camOn=false,baseline=Number(localStorage.getItem('matrixBaseline')||0);
+let samples=[],hist=[],lastGood=null,lastConf=0;
+
+const seedPhases = [];
+for(let i=0;i<100;i++){
+  let x=Math.sin((i+1)*12.9898)*43758.5453;
+  seedPhases.push((x-Math.floor(x))*Math.PI*2);
+}
+function el(id){return document.getElementById(id)}
+function now(){return Date.now()+offset}
+function lClamp(v,a,b){return Math.max(a,Math.min(b,v))}
+function median(a){if(!a.length)return null;let b=[...a].sort((x,y)=>x-y);return b[Math.floor(b.length/2)]}
+function avg(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:null}
+function fmt(v){return v==null?'--':Math.round(v)+' ms'}
+function profile(){
+  const p=el('profile').value;
+  if(p==='precision')return{n:10,cycle:1200,min:.08,max:.92,label:'PRECISION'};
+  if(p==='standard')return{n:8,cycle:2000,min:.12,max:.88,label:'STANDARD'};
+  return{n:8,cycle:3000,min:.20,max:.82,label:'SAFE'};
+}
+function profileChanged(){
+  samples=[];hist=[];
+  const p=profile();
+  el('profileInfo').textContent = `${p.label} · ${p.n}x${p.n} · ${p.cycle}ms`;
+}
+function resize(){
+  const r=c.getBoundingClientRect();let w=Math.floor(r.width||innerWidth),h=Math.floor(r.height||innerHeight);
+  if(w!==W||h!==H){c.width=sc.width=W=w;c.height=sc.height=H=h}
+}
+function clockText(ms){let d=new Date(ms),m=String(d.getMilliseconds()).padStart(3,'0');return d.toTimeString().slice(0,8)+'.'+m}
+function phaseVal(t,idx,prof=profile()){
+  let a=((t%prof.cycle)/prof.cycle)*Math.PI*2 + seedPhases[idx%seedPhases.length];
+  let s=(Math.sin(a)+1)/2;
+  let soft=s*s*(3-2*s);
+  return prof.min+(prof.max-prof.min)*soft;
+}
+function expectedVec(t,n=profile().n){
+  let a=[];
+  for(let i=0;i<n*n;i++)a.push(phaseVal(t,i));
+  return normalize(a);
+}
+function normalize(a){
+  let m=avg(a),sd=Math.sqrt(avg(a.map(x=>(x-m)*(x-m)))||1);
+  return a.map(x=>(x-m)/(sd||1));
+}
+function corr(a,b){
+  let s=0,n=Math.min(a.length,b.length);
+  for(let i=0;i<n;i++)s+=a[i]*b[i];
+  return s/n;
+}
+function parseAny(txt,res){
+  try{
+    const j=JSON.parse(txt);
+    if(j.unixtime)return j.unixtime*1000;
+    if(j.utc_datetime)return Date.parse(j.utc_datetime);
+    if(j.datetime)return Date.parse(j.datetime);
+    if(j.dateTime){let base=Date.parse(String(j.dateTime).endsWith('Z')?j.dateTime:j.dateTime+'Z');return base+Number(j.milliSeconds||j.milliseconds||0)}
+    if(j.currentDateTime)return Date.parse(j.currentDateTime);
+    if(j.timestamp)return Number(j.timestamp);
+  }catch(e){}
+  let h=res?.headers?.get?.('date'); if(h)return Date.parse(h);
+  return null;
+}
+async function sampleTime(url){
+  const t0=Date.now();
+  const res=await fetch(url+(url.includes('?')?'&':'?')+'_='+Math.random(),{cache:'no-store'});
+  const txt=await res.text();
+  const t3=Date.now();
+  const srv=parseAny(txt,res);
+  if(!srv)throw Error('no server time');
+  let rtt=t3-t0,off=srv+rtt/2-t3;
+  return{rtt,off};
+}
+async function syncClock(){
+  const mode=el('syncMode').value;
+  if(mode==='baseline'){offset=0;syncLabel='BASELINE';netRtt=netJitter=netUnc=null;updateNet();return}
+  const urls = mode==='custom' ? [el('timeUrl').value.trim()] :
+    mode==='worldtime' ? ['https://worldtimeapi.org/api/timezone/Etc/UTC'] :
+    mode==='timeapi' ? ['https://www.timeapi.io/api/Time/current/zone?timeZone=UTC'] :
+    ['https://www.timeapi.io/api/Time/current/zone?timeZone=UTC','https://worldtimeapi.org/api/timezone/Etc/UTC'];
+  let ss=[];
+  el('netText').textContent='SYNCING...';
+  for(const u of urls){
+    if(!u)continue;
+    for(let i=0;i<6;i++){
+      try{ss.push(await sampleTime(u));await new Promise(r=>setTimeout(r,60))}catch(e){}
+    }
+    if(ss.length>=4)break;
+  }
+  if(ss.length<2){offset=0;syncLabel='BASELINE';netRtt=netJitter=netUnc=null;updateNet();return}
+  ss.sort((a,b)=>a.rtt-b.rtt);
+  let best=ss.slice(0,Math.min(6,ss.length));
+  offset=median(best.map(x=>x.off));
+  netRtt=best[0].rtt;
+  netJitter=Math.max(...best.map(x=>x.off))-Math.min(...best.map(x=>x.off));
+  netUnc=Math.round(netRtt/2 + netJitter/2);
+  syncLabel=(netUnc<=60?'SYNC OK':'SYNC MED');
+  updateNet();
+}
+function updateNet(){
+  el('netText').textContent=syncLabel+(netRtt!=null?' · RTT '+Math.round(netRtt)+'ms · ±'+netUnc+'ms':'');
+  el('netText').className='pill '+(syncLabel==='SYNC OK'?'ok':syncLabel==='BASELINE'?'warn':'warn');
+  el('hNet').textContent=netUnc!=null?'±'+netUnc+' ms':'BASE';
+}
+function drawGenerator(){
+  resize();
+  const t=now(),prof=profile(),n=prof.n;
+  ctx.fillStyle='#020617';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='rgba(56,189,248,.07)';ctx.lineWidth=1;
+  let gs=Math.max(42,Math.round(Math.min(W,H)/12));
+  for(let x=0;x<W;x+=gs){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke()}
+  for(let y=0;y<H;y+=gs){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,H<1?0:y);ctx.stroke()}
+
+  // Leave center clean and use side empty areas efficiently.
+  let reservedSide = Math.min(300, W * 0.18);
+  let size = Math.min(W - reservedSide*2 - 28, H*0.64);
+  size = Math.max(280, size);
+  const x=W/2-size/2, y=H*.40-size/2;
+
+  ctx.fillStyle='rgba(2,6,23,.92)';ctx.fillRect(x,y,size,size);
+  ctx.lineWidth=Math.max(7,size*.018);ctx.strokeStyle='#f59e0b';ctx.strokeRect(x,y,size,size);
+  ctx.lineWidth=Math.max(3,size*.008);ctx.strokeStyle='#38bdf8';ctx.strokeRect(x+size*.018,y+size*.018,size*.964,size*.964);
+
+  // Small info only, no giant "BINARY PHASE MATRIX" title
+  ctx.textAlign='center';
+  ctx.font='900 '+Math.max(16,Math.min(W/62,H/24))+'px monospace';
+  ctx.fillStyle='#a9d9ff';
+  ctx.fillText(prof.label+' · '+n+'x'+n+' · cycle '+prof.cycle+'ms · '+syncLabel, W/2, y-14);
+
+  const pad=size*.07,cell=(size-pad*2)/n,gap=cell*.055;
+  for(let r=0;r<n;r++){
+    for(let col=0;col<n;col++){
+      let i=r*n+col,vv=phaseVal(t,i,prof);
+      let lum=Math.round(255*vv);
+      ctx.fillStyle='rgb('+lum+','+lum+','+lum+')';
+      ctx.fillRect(x+pad+col*cell+gap,y+pad+r*cell+gap,cell-gap*2,cell-gap*2);
+    }
+  }
+
+  ctx.font='900 '+Math.max(42,Math.min(W/12,H/7))+'px monospace';
+  ctx.fillStyle='#dbeafe';
+  ctx.fillText(clockText(t),W/2,H*.82);
+  ctx.font='700 '+Math.max(14,Math.min(W/60,H/22))+'px monospace';
+  ctx.fillStyle='#fbbf24';
+  ctx.fillText('SMOOTH CELL PHASE · NO FLASH · WEB PAGE → DISPLAY → PHONE CAMERA',W/2,H*.90);
+  ctx.textAlign='start';
+  el('gmText').textContent='GM '+clockText(t);
+}
+function draw(){
+  if(el('mode').value==='gen')drawGenerator();
+  else if(camOn)analyzeVideo();
+  requestAnimationFrame(draw);
+}
+function setMode(){
+  const phone=el('mode').value==='phone';
+  document.body.classList.toggle('phone',phone);
+  document.body.classList.toggle('camOn',phone&&camOn);
+  v.style.display=phone?'block':'none';
+  c.style.display=phone?'none':'block';
+  el('guide').style.display=phone?'block':'none';
+  if(!phone)document.body.classList.remove('camOn');
+  const mPhone = el('modePhone');
+  if(mPhone) mPhone.value = el('mode').value;
+}
+function syncPhoneMode(value){
+  el('mode').value = value;
+  setMode();
+}
+async function startCamera(){
+  try{
+    let stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1280},height:{ideal:720}},audio:false});
+    v.srcObject=stream;await v.play();camOn=true;document.body.classList.add('camOn');
+    el('hStatus').textContent='CAMERA';el('hStatus').className='warn';
+  }catch(e){
+    el('hStatus').textContent='CAM FAIL';el('hStatus').className='bad';
+  }
+}
+function sampleMatrix(){
+  resize();
+  if(v.videoWidth<10)return null;
+  sx.drawImage(v,0,0,W,H);
+  const img=sx.getImageData(0,0,W,H).data;
+  const prof=profile(),n=prof.n;
+  const roi=Math.min(W,H)*.62,cx=W/2,cy=H*.48;
+  const x0=cx-roi/2,y0=cy-roi/2,pad=roi*.07,cell=(roi-pad*2)/n;
+  let arr=[];
+  for(let r=0;r<n;r++){
+    for(let col=0;col<n;col++){
+      let sx0=x0+pad+col*cell+cell*.25,sy0=y0+pad+r*cell+cell*.25;
+      let sx1=x0+pad+col*cell+cell*.75,sy1=y0+pad+r*cell+cell*.75;
+      let sum=0,cnt=0,step=Math.max(4,Math.floor(cell/6));
+      for(let yy=sy0;yy<sy1;yy+=step){
+        for(let xx=sx0;xx<sx1;xx+=step){
+          let x=Math.max(0,Math.min(W-1,Math.round(xx))),y=Math.max(0,Math.min(H-1,Math.round(yy)));
+          let k=(y*W+x)*4;sum+=(img[k]+img[k+1]+img[k+2])/3;cnt++;
+        }
+      }
+      arr.push((sum/cnt)/255);
+    }
+  }
+  return normalize(arr);
+}
+function estimateLatency(obs){
+  const prof=profile(),t=now(),maxLat=900;
+  let best={lat:null,score:-9};
+  for(let lat=0;lat<=maxLat;lat+=12){
+    let sc=corr(obs,expectedVec(t-lat,prof.n));
+    if(sc>best.score)best={lat,score:sc};
+  }
+  let start=Math.max(0,best.lat-18),end=Math.min(maxLat,best.lat+18);
+  for(let lat=start;lat<=end;lat+=2){
+    let sc=corr(obs,expectedVec(t-lat,prof.n));
+    if(sc>best.score)best={lat,score:sc};
+  }
+  return best;
+}
+function analyzeVideo(){
+  const obs=sampleMatrix();
+  if(!obs)return;
+  const est=estimateLatency(obs);
+  const conf=lClamp((est.score-.22)/.55,0,1);
+  if(conf<.35){
+    el('hStatus').textContent='NO LOCK';el('hStatus').className='warn';
+    el('hConf').textContent=Math.round(conf*100)+'%';el('hConf').className='warn';
+    return;
+  }
+  let lat=Math.max(0,est.lat-baseline);
+  if(lastGood!=null && Math.abs(lat-lastGood)>500 && conf<.7){
+    el('hStatus').textContent='UNSTABLE';el('hStatus').className='warn';
+    return;
+  }
+  lastGood=lat;
+  samples.push(lat);if(samples.length>21)samples.shift();
+  let med=median(samples);
+  hist.unshift(Math.round(med));hist=hist.slice(0,6);
+  el('hVideo').textContent=fmt(med);
+  el('hFinal').textContent=fmt(med)+(netUnc!=null?' ±'+netUnc:'');
+  el('hConf').textContent=Math.round(conf*100)+'%';
+  el('hConf').className=conf>.7?'ok':conf>.5?'warn':'bad';
+  el('hStatus').textContent=conf>.7?'LOCKED':'MED LOCK';
+  el('hStatus').className=conf>.7?'ok':'warn';
+  el('histLines').innerHTML=hist.map((v,i)=>v+' ms #'+String(i+1).padStart(2,'0')).join('<br>');
+}
+function calibrateBaseline(){
+  if(lastGood!=null){
+    baseline+=lastGood;
+    localStorage.setItem('matrixBaseline',String(baseline));
+    samples=[];hist=[];lastGood=null;
+    el('hStatus').textContent='BASE SET';el('hStatus').className='ok';
+  }
+}
+function resetAll(){
+  baseline=0;localStorage.setItem('matrixBaseline','0');
+  samples=[];hist=[];lastGood=null;
+  el('hVideo').textContent='-- ms';el('hFinal').textContent='-- ms';el('histLines').textContent='--';
+}
+function toggleClean(){clean=!clean;document.body.classList.toggle('clean',clean);if(clean)document.documentElement.requestFullscreen?.()}
+addEventListener('keydown',e=>{if(e.code==='KeyM')toggleClean();if(e.code==='KeyS')syncClock();if(e.code==='KeyF')document.documentElement.requestFullscreen?.()});
+function boot(){
+  let q=new URLSearchParams(location.search);
+  if(q.get('mode')==='phone'){el('mode').value='phone'}
+  if(q.get('profile') && ['safe','standard','precision'].includes(q.get('profile'))) el('profile').value=q.get('profile');
+  profileChanged();
+  setMode();
+  syncClock();
+  draw();
+}
+boot();
+</script>
+</body>
+</html>
