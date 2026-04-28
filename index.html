@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Broadcast Tools</title>
+  <style>
+    :root{
+      --bg:#050914;
+      --panel:rgba(8,13,26,.78);
+      --panel2:rgba(15,23,42,.82);
+      --line:rgba(56,189,248,.14);
+      --line-strong:rgba(56,189,248,.22);
+      --text:#e7f0ff;
+      --muted:#9fb2d0;
+      --green:rgba(34,197,94,.18);
+      --cyan:rgba(56,189,248,.18);
+      --amber:rgba(245,158,11,.16);
+    }
+    *{box-sizing:border-box}
+    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif}
+    body{
+      position:relative;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px;
+      overflow-x:hidden;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(56,189,248,.10), transparent 26%),
+        radial-gradient(circle at 82% 18%, rgba(34,197,94,.09), transparent 22%),
+        radial-gradient(circle at 50% 78%, rgba(59,130,246,.08), transparent 28%),
+        linear-gradient(180deg,#07101f 0%, #050914 100%);
+    }
+    .bg,.gridfx,.sweep,.hud,.noise{position:fixed;inset:0;pointer-events:none}
+    .bg{z-index:0}
+    .gridfx{
+      z-index:0;
+      opacity:.45;
+      background:
+        linear-gradient(rgba(56,189,248,.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56,189,248,.07) 1px, transparent 1px),
+        linear-gradient(rgba(56,189,248,.025) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56,189,248,.025) 1px, transparent 1px);
+      background-size:72px 72px,72px 72px,18px 18px,18px 18px;
+      animation:gridDrift 26s linear infinite;
+    }
+    .sweep{
+      z-index:1;
+      overflow:hidden;
+    }
+    .sweep::before,
+    .sweep::after{
+      content:"";
+      position:absolute;
+      left:-30%;
+      right:-30%;
+      height:170px;
+      filter:blur(18px);
+    }
+    .sweep::before{
+      top:16%;
+      background:linear-gradient(90deg,
+        transparent 0%,
+        rgba(56,189,248,.02) 18%,
+        rgba(56,189,248,.18) 49%,
+        rgba(34,197,94,.10) 52%,
+        transparent 82%
+      );
+      animation:scanA 18s ease-in-out infinite;
+      opacity:.55;
+    }
+    .sweep::after{
+      top:62%;
+      background:linear-gradient(90deg,
+        transparent 0%,
+        rgba(34,197,94,.02) 18%,
+        rgba(34,197,94,.15) 49%,
+        rgba(56,189,248,.08) 52%,
+        transparent 82%
+      );
+      animation:scanB 22s ease-in-out infinite;
+      opacity:.35;
+    }
+    .hud{
+      z-index:1;
+      opacity:.9;
+    }
+    .hud::before,
+    .hud::after{
+      content:"";
+      position:absolute;
+      border:1px solid rgba(56,189,248,.13);
+      border-radius:28px;
+      box-shadow:0 0 0 1px rgba(56,189,248,.04) inset;
+    }
+    .hud::before{left:3vw;top:7vh;width:26vw;height:21vh}
+    .hud::after{right:4vw;bottom:8vh;width:28vw;height:24vh}
+    .hud .ring,
+    .hud .ring2,
+    .hud .corner,
+    .hud .crossx,
+    .hud .crossy{
+      position:absolute;
+    }
+    .hud .ring{
+      left:5vw; bottom:10vh;
+      width:min(24vw,340px); height:min(24vw,340px);
+      border-radius:50%; border:1px solid rgba(56,189,248,.12);
+    }
+    .hud .ring2{
+      left:calc(5vw + min(24vw,340px)*0.14); bottom:calc(10vh + min(24vw,340px)*0.14);
+      width:min(17.2vw,243px); height:min(17.2vw,243px);
+      border-radius:50%; border:1px solid rgba(34,197,94,.10);
+    }
+    .hud .corner{
+      right:5vw; top:9vh; width:160px; height:160px;
+      border-top:2px solid rgba(56,189,248,.17);
+      border-right:2px solid rgba(56,189,248,.17);
+    }
+    .hud .crossx{
+      left:50%; top:0; bottom:0; width:1px;
+      background:linear-gradient(to bottom, transparent 0%, rgba(56,189,248,.08) 30%, rgba(56,189,248,.08) 70%, transparent 100%);
+      transform:translateX(-50%);
+      opacity:.5;
+    }
+    .hud .crossy{
+      top:50%; left:0; right:0; height:1px;
+      background:linear-gradient(to right, transparent 0%, rgba(56,189,248,.08) 30%, rgba(56,189,248,.08) 70%, transparent 100%);
+      transform:translateY(-50%);
+      opacity:.35;
+    }
+    .noise{
+      z-index:1;
+      opacity:.03;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160' viewBox='0 0 160 160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+      mix-blend-mode:screen;
+    }
+    main{position:relative;z-index:3;width:min(1040px,100%)}
+    h1{font-size:clamp(38px,6vw,72px);line-height:1;margin:0 0 12px;font-weight:800;letter-spacing:-.03em}
+    p.lead{color:var(--muted);font-size:18px;margin:0 0 28px;max-width:920px}
+    .eyebrow{display:inline-flex;margin-bottom:14px;padding:8px 12px;border-radius:999px;border:1px solid rgba(56,189,248,.22);background:rgba(8,16,32,.58);color:#cfe8ff;font:800 12px ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase;backdrop-filter:blur(8px)}
+    .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+    a.card{display:block;text-decoration:none;color:var(--text);background:linear-gradient(135deg,var(--panel2),var(--panel));border:1px solid rgba(56,189,248,.24);border-radius:22px;padding:24px;min-height:220px;backdrop-filter:blur(10px);box-shadow:0 14px 48px rgba(0,0,0,.18);transition:transform .2s ease,border-color .2s ease,box-shadow .2s ease}
+    a.card:hover{border-color:rgba(56,189,248,.72);transform:translateY(-2px);box-shadow:0 18px 56px rgba(0,0,0,.24)}
+    .badge{display:inline-flex;border:1px solid rgba(34,197,94,.42);background:rgba(34,197,94,.12);color:#bbf7d0;border-radius:999px;padding:7px 10px;font:800 12px ui-monospace,monospace;margin-bottom:18px}
+    h2{font-size:28px;margin:0 0 10px}
+    ul{margin:16px 0 0;padding-left:18px;color:var(--muted);line-height:1.7}
+    .note{margin-top:22px;padding:14px 16px;border:1px solid rgba(245,158,11,.35);background:rgba(245,158,11,.10);border-radius:16px;color:#f8d99c;backdrop-filter:blur(8px)}
+    @keyframes gridDrift{0%{background-position:0 0,0 0,0 0,0 0}100%{background-position:72px 36px,72px 36px,18px 9px,18px 9px}}
+    @keyframes scanA{0%,100%{transform:translateX(-24%) translateY(0)}50%{transform:translateX(24%) translateY(8px)}}
+    @keyframes scanB{0%,100%{transform:translateX(20%) translateY(0)}50%{transform:translateX(-18%) translateY(-8px)}}
+    @media (max-width:780px){
+      body{padding:18px}
+      .grid{grid-template-columns:1fr}
+      .hud::before{width:40vw;height:14vh}
+      .hud::after{width:42vw;height:18vh}
+    }
+    @media (prefers-reduced-motion: reduce){.gridfx,.sweep::before,.sweep::after{animation:none !important}}
+  </style>
+</head>
+<body>
+  <div class="bg"></div>
+  <div class="gridfx"></div>
+  <div class="sweep"></div>
+  <div class="hud">
+    <div class="ring"></div>
+    <div class="ring2"></div>
+    <div class="corner"></div>
+    <div class="crossx"></div>
+    <div class="crossy"></div>
+  </div>
+  <div class="noise"></div>
+
+  <main>
+    <div class="eyebrow">INDEX STYLE · STUDIO TECH / HUD + BROADCAST GRID</div>
+    <h1>Broadcast Tools</h1>
+    <p class="lead">A combined index background using the clean Broadcast Grid FX base together with the more technical Studio Tech / HUD framing. The result stays subtle, broadcast-looking, and not distracting.</p>
+    <div class="grid">
+      <a class="card" href="./input-test-signal-generator-v3.html?v=autohide-titlebar">
+        <span class="badge">FIXED</span>
+        <h2>Input Test Signal Generator V3</h2>
+        <ul>
+          <li>top titlebar now auto-hides with the UI</li>
+          <li>Hide UI / Clean hides titlebar too</li>
+          <li>mouse/touch brings it back</li>
+        </ul>
+      </a>
+      <a class="card" href="./grandmaster-latency-meter.html?v=hideable-titlebar">
+        <span class="badge">FIXED</span>
+        <h2>Grandmaster Latency Meter</h2>
+        <ul>
+          <li>top navigation remains active</li>
+          <li>press H to hide/show titlebar in marker mode</li>
+          <li>mobile HUD kept</li>
+        </ul>
+      </a>
+    </div>
+    <div class="note">Index background updated: Studio Tech / HUD FX and Broadcast Grid FX are now merged into one cleaner combined style.</div>
+  </main>
+</body>
+</html>
